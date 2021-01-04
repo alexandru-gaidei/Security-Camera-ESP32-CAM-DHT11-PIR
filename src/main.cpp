@@ -11,6 +11,7 @@
 #include "soc/rtc_cntl_reg.h"  //disable brownout problems
 #include "esp_http_server.h"
 #include "DHT.h"
+#include <ArduinoJson.h>
 
 
 const char* ssid = WIFI_SSID;
@@ -27,7 +28,8 @@ int dht_sensor = 14;
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-float temperature, humidity, heatindex, pir;
+float temperature, humidity, heatindex;
+bool pir;
 
 unsigned long sensorPreviousMillis1 = 0;
 const long sensorInterval1 = 5000; 
@@ -69,9 +71,25 @@ static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %
 httpd_handle_t server_httpd = NULL;
 httpd_handle_t stream_httpd = NULL;
 
+StaticJsonDocument<200> doc;
+
 static esp_err_t index_handler(httpd_req_t *req)
 {
-    const char resp[] = "URI GET Response";
+    doc.clear();
+
+    JsonObject variables = doc.createNestedObject("variables");
+    variables["temperature"] = temperature;
+    variables["humidity"] = humidity;
+    variables["heatindex"] = heatindex;
+    variables["pir"] = pir;
+
+    doc["id"] = DEVICE_ID;
+    doc["name"] = DEVICE_NAME;
+
+    String output;
+    serializeJson(doc, output);
+
+    const char* resp = output.c_str();
     httpd_resp_send(req, resp, -1);
     return ESP_OK;
 }
@@ -254,9 +272,11 @@ void processPIRSensorData()
     else {
       digitalWrite(led, LOW);
     }
+    pir = true;
   }
   else {
-      digitalWrite(led, LOW);
+    digitalWrite(led, LOW);
+    pir = false;
   }
 }
 
