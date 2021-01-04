@@ -27,13 +27,13 @@ int dht_sensor = 14;
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-float temperature, humidity, heatindex;
+float temperature, humidity, heatindex, pir;
 
 unsigned long sensorPreviousMillis1 = 0;
 const long sensorInterval1 = 5000; 
 
 unsigned long sensorPreviousMillis2 = 0;
-const long sensorInterval2 = 500; 
+const long sensorInterval2 = 300; 
 
 
 void processDHTSensorData();
@@ -66,9 +66,18 @@ static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" 
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
+httpd_handle_t server_httpd = NULL;
 httpd_handle_t stream_httpd = NULL;
 
-static esp_err_t stream_handler(httpd_req_t *req){
+static esp_err_t index_handler(httpd_req_t *req)
+{
+    const char resp[] = "URI GET Response";
+    httpd_resp_send(req, resp, -1);
+    return ESP_OK;
+}
+
+static esp_err_t stream_handler(httpd_req_t *req)
+{
   camera_fb_t * fb = NULL;
   esp_err_t res = ESP_OK;
   size_t _jpg_buf_len = 0;
@@ -88,7 +97,7 @@ static esp_err_t stream_handler(httpd_req_t *req){
     } else {
       if(fb->width > 400){
         if(fb->format != PIXFORMAT_JPEG){
-          bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
+          bool jpeg_converted = frame2jpg(fb, 90, &_jpg_buf, &_jpg_buf_len);
           esp_camera_fb_return(fb);
           fb = NULL;
           if(!jpeg_converted){
@@ -122,7 +131,6 @@ static esp_err_t stream_handler(httpd_req_t *req){
     if(res != ESP_OK){
       break;
     }
-    //Serial.printf("MJPG: %uB\n",(uint32_t)(_jpg_buf_len));
   }
   return res;
 }
@@ -133,18 +141,35 @@ void startServer()
   config.server_port = 80;
 
   httpd_uri_t index_uri = {
-    .uri       = "/",
+      .uri      = "/",
+      .method   = HTTP_GET,
+      .handler  = index_handler,
+      .user_ctx = NULL
+  };
+
+  httpd_uri_t video_uri = {
+    .uri       = "/video",
     .method    = HTTP_GET,
     .handler   = stream_handler,
     .user_ctx  = NULL
   };
   
+  Serial.printf("Starting web server on port: '%d'\n", config.server_port);
+  if (httpd_start(&server_httpd, &config) == ESP_OK) {
+      httpd_register_uri_handler(server_httpd, &index_uri);
+  }
+
+  config.server_port += 1;
+  config.ctrl_port += 1;
+  Serial.printf("Starting stream server on port: '%d'\n", config.server_port);
   if (httpd_start(&stream_httpd, &config) == ESP_OK) {
-    httpd_register_uri_handler(stream_httpd, &index_uri);
+    httpd_register_uri_handler(stream_httpd, &video_uri);
   }
 }
+
                              
-void setup() {
+void setup()
+{
   pinMode(led, OUTPUT);
   pinMode(pir_sensor, INPUT);
   
@@ -175,11 +200,11 @@ void setup() {
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG; 
   
-  if(psramFound()){
+  if(psramFound()) {
     config.frame_size = FRAMESIZE_XGA;
     config.jpeg_quality = 10;
     config.fb_count = 2;
-  } 
+  }
   else {
     config.frame_size = FRAMESIZE_SVGA;
     config.jpeg_quality = 12;
@@ -202,21 +227,23 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
   
-  Serial.print("Server Ready! Go to: http://");
-  Serial.print(WiFi.localIP());
+  Serial.print("IP:");
+  Serial.println(WiFi.localIP());
   
   dht.begin();
 
   startServer();
 }
 
-void loop() {
+void loop()
+{
   processDHTSensorData();
   processPIRSensorData();
 }
 
 
-void processPIRSensorData() {
+void processPIRSensorData()
+{
   unsigned long sensorCurrentMillis = millis();
   
   if (digitalRead(pir_sensor) == HIGH) {
@@ -233,8 +260,8 @@ void processPIRSensorData() {
   }
 }
 
-
-void processDHTSensorData() {
+void processDHTSensorData()
+{
   unsigned long sensorCurrentMillis = millis();
  
   if(sensorCurrentMillis - sensorPreviousMillis1 >= sensorInterval1) {

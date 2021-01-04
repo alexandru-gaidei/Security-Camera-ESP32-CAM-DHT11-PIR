@@ -2,7 +2,7 @@
 
 ## Overview
 
-A simple example that implements API for ESP32-CAM WiFi chip, DHT11 sensor and PIR.  
+A simple example that implements API for ESP32-CAM WiFi chip, DHT11 sensor and PIR (or another sensor modules).  
 
 ## Setup
 
@@ -24,6 +24,6 @@ A simple example that implements API for ESP32-CAM WiFi chip, DHT11 sensor and P
 }
 ```
 
-`http://wifi-ip/video`
+`http://wifi-ip:81/video`
 
 For video streaming
