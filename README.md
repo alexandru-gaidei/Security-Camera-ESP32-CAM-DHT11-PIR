@@ -2,7 +2,9 @@
 
 ## Overview
 
-A simple example that implements API for ESP32-CAM WiFi chip, DHT11 sensor and PIR (or another sensor modules).  
+A simple example that implements Video Streaming and API calls for ESP32-CAM WiFi chip, DHT11 sensor and PIR (or another sensor modules).
+
+This example uses [PlatformIO](https://platformio.org/) and [VSCode](https://code.visualstudio.com/) IDE.
 
 ## Setup
 
