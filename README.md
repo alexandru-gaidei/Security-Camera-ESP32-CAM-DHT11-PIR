@@ -1,4 +1,4 @@
-<h1>ESP832-CAM DHT11/Led/Relay</h1>
+<h1>ESP32-CAM DHT11/PIR (Led/Relay/Other)</h1>
 
 ## Overview
 
